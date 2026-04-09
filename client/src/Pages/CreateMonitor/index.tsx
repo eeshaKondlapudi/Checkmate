@@ -40,6 +40,7 @@ import {
 } from "@/Types/Monitor";
 import type { Notification } from "@/Types/Notification";
 import type { MonitorFormData } from "@/Validation/monitor";
+import { useFieldArray } from "react-hook-form";
 
 interface GeneralSettingsConfig {
 	urlLabel: string;
@@ -204,6 +205,15 @@ const CreateMonitorPage = () => {
 	});
 	const { control, watch, handleSubmit, clearErrors } = form;
 
+	const {
+		fields: escalationFields,
+		append: appendEscalation,
+		remove: removeEscalation,
+	} = useFieldArray({
+		control,
+		name: "escalatedNotifications",
+	});
+
 	useEffect(() => {
 		form.reset(defaults);
 	}, [defaults, form]);
@@ -356,6 +366,88 @@ const CreateMonitorPage = () => {
 					}
 				/>
 			)}
+
+			<ConfigBox
+				title="Escalated Notifications"
+				subtitle="Notify different channels as an incident stays active longer."
+				rightContent={
+					<Stack spacing={2}>
+						{escalationFields.map((field, index) => (
+							<Stack
+								key={field.id}
+								direction={{ xs: "column", md: "row" }}
+								spacing={2}
+								alignItems={{ xs: "stretch", md: "center" }}
+							>
+								<Controller
+									name={`escalatedNotifications.${index}.delayMinutes`}
+									control={control}
+									render={({ field, fieldState }) => (
+										<TextField
+											{...field}
+											type="number"
+											fieldLabel="Delay (minutes)"
+											value={field.value ?? 0}
+											onChange={(e) => field.onChange(Number(e.target.value))}
+											error={!!fieldState.error}
+											helperText={fieldState.error?.message}
+											fullWidth
+										/>
+									)}
+								/>
+
+								<Controller
+									name={`escalatedNotifications.${index}.notificationIds`}
+									control={control}
+									render={({ field, fieldState }) => (
+										<Select
+											value={field.value?.[0] ?? ""}
+											fieldLabel="Notification Channel"
+											placeholder="Select a notification channel"
+											error={!!fieldState.error}
+											onChange={(event) => {
+												const value = event.target.value;
+												field.onChange(value ? [value] : []);
+											}}
+											fullWidth
+										>
+											<MenuItem value="">Select a notification channel</MenuItem>
+											{(notifications ?? []).map((notification) => (
+												<MenuItem
+													key={notification.id}
+													value={notification.id}
+												>
+													{notification.notificationName}
+												</MenuItem>
+											))}
+										</Select>
+									)}
+								/>
+
+								<IconButton
+									color="error"
+									onClick={() => removeEscalation(index)}
+									aria-label="Remove escalation"
+								>
+									<Trash2 size={18} />
+								</IconButton>
+							</Stack>
+						))}
+
+						<Button
+							variant="outlined"
+							onClick={() =>
+								appendEscalation({
+									delayMinutes: 0,
+									notificationIds: [],
+								})
+							}
+						>
+							Add Escalation Rule
+						</Button>
+					</Stack>
+				}
+			/>
 
 			<ConfigBox
 				title={t("pages.createMonitor.form.general.title")}
